@@ -1,0 +1,196 @@
+{% extends "cis/logged-base.html" %}
+{%block title %}{{page_title}}{% endblock %}
+
+{% load templatehelpers %}
+
+{% block body %}
+
+<main>
+    <div class="">
+        <div class="row">
+            <div class="col-sm-6 col-xs-12">
+                <h1 class="h3 mb-4 text-gray-800">{{page_title}}&nbsp;
+                    
+                </h1>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <div class="">
+                
+                <div class="">
+                    <div class="card" id="all">
+                        <div class="card-body">
+                            <div class="">
+                                <table id="records_all" class="table table-striped" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th data-data="created_on" data-name="created_on">Created On
+                                            </th>
+                                            <th data-data="event_type" data-name="event_type">Event Type</th>
+                                            <th data-name="email" data-data="email">Email</th>
+                                            <th data-name="message_subject" data-data="message_subject">Subject</th>
+                                            
+                                            <th data-name="code" data-data="code">Error</th>
+                                            <th data-name="status" data-data="status">Status</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- end tab # records_active -->
+
+                </div>
+                <!-- end tab-content -->
+
+                <script>
+                    var table;
+
+                    window.refreshTable = function () {
+                        var selectedRows = table.rows({ selected: true });
+
+                        selectedRows.deselect();
+                        table.ajax.reload(null, false)
+                    };
+                    
+                    setInterval(function() {
+                        var selectedRows = table.rows({ selected: true });
+                        
+                        if(selectedRows.count() <= 0)
+                            table.ajax.reload(null, false);
+                    }, 5000 * 60);
+
+                    $(document).ready(function () {
+                        let baseURL = '{{api_url}}'
+
+                        $(document).on("change", "form.filter :input", function () {
+                            load_data();
+                        })
+
+                        function load_data() {
+                            let form = $('form.filter')
+                            let newURL = baseURL + '&' + $(form).serialize();
+
+                            table.ajax.url(newURL).load()
+                        }
+
+
+                        $(document).on('click', 'a.actions', function() {
+                            let obj = $(this)
+                            
+                            let action = $(obj).attr('data-action')
+                            let id = $(obj).attr('data-id')
+
+                            event.preventDefault()
+                            return do_ajax_action(action, id)
+                        });
+
+                        function do_ajax_action(action, record_id) {
+                            url = "{%url 'bouncer:do_bulk_action' %}"
+                            let modal = "modal-bulk_actions"
+                            
+                            let data = {
+                                'action': action,
+                                'record_id': record_id
+                            }
+
+                            $.ajax({
+                                type: "GET",
+                                url: url,
+                                data: data,
+                                success: function(response) {
+                                    if(response.display == 'alert') {
+                                        swal({
+                                            title: 'Success',
+                                            text: response.message,
+                                            icon: response.status
+                                        }).then(
+                                            (value) => {
+                                            if (response.action == 'reload_page') {
+                                                parent.location.reload()
+                                            }
+                                            if (response.action == 'reload_table') {
+                                                let modal = "modal-bulk_actions"
+                                                $("#" + modal).modal('hide');
+
+                                                window.parent.refreshTable();
+                                            }
+                                            }
+                                        );
+                                    } else {
+                                        $("#bulk_modal_content").html(response);
+                                        $("#" + modal).modal('show');
+                                    }
+                                }
+                            });
+                        }
+
+                        table = $('#records_all')
+                           .DataTable({
+                                dom: 'B<"float-left mt-3 mb-3"l><"float-right mt-3"f><"row clear">rt<"row"<"col-6"i><"col-6 float-right"p>>',
+                                buttons: [
+                                    {
+                                        extend: 'csv', className: 'btn btn-sm btn-primary text-white text-light',
+                                        text: '<i class="fas fa-file-csv text-white"></i>&nbsp;CSV',
+                                        titleAttr: 'Export results to CSV' 
+                                    },
+                                    { 
+                                        extend: 'print', className: 'btn btn-sm btn-primary text-white text-light',
+                                        text: '<i class="fas fa-print text-white"></i>&nbsp;Print',
+                                        titleAttr: 'Print' 
+                                    },
+                                ],
+                                'order': [[0, 'desc']],
+                                'orderCellsTop': true,
+                                'fixedHeader': true,
+                                ajax: '{{api_url}}',
+                                serverSide: true,
+                                processing: true,
+                                language: {
+                                    'loadingRecords': '&nbsp;',
+                                },
+                                'lengthMenu': [30, 50, 100],
+                                'columns': [
+                                    null,
+                                    null,
+                                    {
+                                        'render': function (data, type, row, meta) {
+                                            let col = row.email
+
+                                            if(row.meta_info !== null) {
+                                                col = "<a title='View Details' target='_blank' href='" + row.meta_info.ce_url + "'>" + col + "&nbsp;<i class='fa fas  fa-external-link'></i></a>" + "<br>" + 
+                                                "<small>" + row.meta_info.role + "</small>"
+                                            }
+                                            return col
+                                        }
+                                    },
+                                    null,
+                                    {
+                                        'orderable': false,
+                                        'searchable': false
+                                    },
+                                    {
+                                        'render': function (data, type, row, meta) {
+                                            let col = row.status
+
+                                            if(row.actions !== null) {
+                                                col += "<br>"
+                                                $(row.actions).each(function(i, k){
+                                                    col+= "<small><a href='#' class='actions' data-id='" + row.id + "' data-action='" + k.action + "' title='" + k.label + "'><i class='" + k.icon + "'></i></a></small>&nbsp;"
+                                                });
+                                            }
+                                            return col
+                                        }
+                                    },
+                                ]
+                            }
+                        );
+                    });
+                </script>
+            </div>
+        </div>
+
+</main>
+
+{% endblock %}
