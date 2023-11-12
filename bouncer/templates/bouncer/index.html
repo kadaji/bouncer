@@ -159,8 +159,9 @@
                                             let col = row.email
 
                                             if(row.meta_info !== null) {
-                                                col = "<a title='View Details' target='_blank' href='" + row.meta_info.ce_url + "'>" + col + "&nbsp;<i class='fa fas  fa-external-link'></i></a>" + "<br>" + 
-                                                "<small>" + row.meta_info.role + "</small>"
+                                                if(row.meta_info.ce_url != nulll)
+                                                    col = "<a title='View Details' target='_blank' href='" + row.meta_info.ce_url + "'>" + col + "&nbsp;<i class='fa fas  fa-external-link'></i></a>" + "<br>" + 
+                                                    "<small>" + row.meta_info.role + "</small>"
                                             }
                                             return col
                                         }
